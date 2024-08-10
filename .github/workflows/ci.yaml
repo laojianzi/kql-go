@@ -28,7 +28,7 @@ jobs:
           cache: true
           go-version: ${{matrix.go-version}}
 
-      - uses: Diff
+      - name: Diff
       - run: go mod tidy && git diff --exit-code
 
       - name: Lint
