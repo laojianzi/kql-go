@@ -6,11 +6,15 @@ import (
 	"strings"
 )
 
+type Parser interface {
+	Stmt() (Expr, error)
+}
+
 type defaultParser struct {
 	lexer *defaultLexer
 }
 
-func New(s string) *defaultParser {
+func New(s string) *defaultParser { // skipcq: RVV-B0011
 	return &defaultParser{lexer: &defaultLexer{input: strings.TrimSpace(s)}}
 }
 
