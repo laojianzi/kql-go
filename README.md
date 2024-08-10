@@ -10,6 +10,8 @@ This project is inspired by [clickhouse-sql-parser](https://github.com/AfterShip
 
 ## How to use
 
+Playground: https://go.dev/play/p/m36hkz43PQL
+
 ```Go
 package main
 
