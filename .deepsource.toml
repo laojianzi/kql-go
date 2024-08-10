@@ -1,0 +1,20 @@
+version = 1
+
+[[analyzers]]
+name = "go"
+enabled = true
+  [analyzers.meta]
+  import_root = "github.com/laojianzi/kql-go"
+  cgo_enabled = false
+
+[[analyzers]]
+name = "test-coverage"
+enabled = true
+
+[[transformers]]
+name = "gofumpt"
+enabled = true
+
+[[transformers]]
+name = "gofmt"
+enabled = true

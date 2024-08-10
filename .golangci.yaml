@@ -1,0 +1,80 @@
+run:
+  concurrency: 4
+  timeout: 5m
+  issues-exit-code: 2
+  tests: true
+  modules-download-mode: readonly
+  allow-parallel-runners: true
+  allow-serial-runners: true
+  go: '1.17'
+
+output:
+  sort-results: true
+  sort-order:
+    - linter
+    - severity
+    - file # filepath, line, and column.
+  show-stats: true
+
+linters:
+  disable:
+    - godot
+  presets:
+    - bugs
+    - comment
+    - complexity
+    - error
+    - format
+    - import
+    - metalinter
+    - module
+    - performance
+    - sql
+    - style
+    - test
+    - unused
+
+  fast: true
+
+linters-settings:
+  wsl:
+    allow-assign-and-anything: false
+    allow-assign-and-call: true
+    allow-cuddle-declarations: false
+    allow-multiline-assign: true
+    allow-separated-leading-comment: false
+    allow-trailing-comment: false
+    force-case-trailing-whitespace: 0
+    force-err-cuddling: false
+    force-short-decl-cuddling: false
+    strict-append: true
+
+  testpackage:
+    allow-packages:
+      - example
+      - main
+      - parser
+
+  depguard:
+    rules:
+      main:
+        allow:
+          - $gostd
+          - github.com/stretchr/testify
+
+  funlen:
+    ignore-comments: true
+
+issues:
+  exclude-rules:
+    - path: _test\.go
+      linters:
+        - funlen
+        - lll
+        - gocognit
+        - maintidx
+      test: "cognitive complexity 55 of func `Test_parseMatchExpr` is high (> 30)"
+
+    - path: parser/token.go
+      linters:
+        - gochecknoinits
