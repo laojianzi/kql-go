@@ -62,7 +62,11 @@ func (e *MatchExpr) String() string {
 
 	if e.Field != "" {
 		buf.WriteString(e.Field)
-		buf.WriteByte(' ')
+
+		if e.Operator != TokenKindOperatorEql {
+			buf.WriteByte(' ')
+		}
+
 		buf.WriteString(e.Operator.String())
 		buf.WriteByte(' ')
 	}

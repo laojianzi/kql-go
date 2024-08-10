@@ -61,6 +61,7 @@ linters-settings:
         allow:
           - $gostd
           - github.com/stretchr/testify
+          - github.com/laojianzi/kql-go
 
   funlen:
     ignore-comments: true
