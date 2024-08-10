@@ -32,6 +32,7 @@ func Test_parseMatchExpr(t *testing.T) {
 				t.Run(fmt.Sprintf("input: %s", test.input), func(t *testing.T) {
 					expr, err := New(test.input).parseMatchExpr()
 					require.NoError(t, err)
+
 					pos, end := 0, len(test.input)
 					if hasNot {
 						pos += 4
@@ -76,6 +77,7 @@ func Test_parseMatchExpr(t *testing.T) {
 				for _, space := range []string{"%s", " %s", "%s ", " %s "} {
 					operatorWithSpace := fmt.Sprintf(space, operator.String())
 					input := fmt.Sprintf(test.format, operatorWithSpace)
+
 					for _, hasNot := range []bool{false, true} {
 						if hasNot {
 							input = "NOT " + input
@@ -84,6 +86,7 @@ func Test_parseMatchExpr(t *testing.T) {
 						t.Run(fmt.Sprintf("input: %s", input), func(t *testing.T) {
 							expr, err := New(input).parseMatchExpr()
 							require.NoError(t, err)
+
 							pos, end := 5+len(operatorWithSpace), len(input)
 							if hasNot {
 								pos += 4
