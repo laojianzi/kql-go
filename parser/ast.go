@@ -8,6 +8,35 @@ type Expr interface {
 	String() string
 }
 
+type WrapExpr struct {
+	pos    int
+	Field  string
+	Layers int
+	Expr   Expr
+}
+
+func (e *WrapExpr) Pos() int {
+	return e.pos
+}
+
+func (e *WrapExpr) End() int {
+	return e.Expr.End() + e.Layers
+}
+
+func (e *WrapExpr) String() string {
+	var buf strings.Builder
+	if e.Field != "" {
+		buf.WriteString(e.Field)
+		buf.WriteString(": ")
+	}
+
+	buf.WriteString(strings.Repeat("(", e.Layers))
+	buf.WriteString(e.Expr.String())
+	buf.WriteString(strings.Repeat(")", e.Layers))
+
+	return buf.String()
+}
+
 type CombineExpr struct {
 	LeftExpr  Expr
 	Keyword   Kind
@@ -51,6 +80,10 @@ func (e *MatchExpr) Pos() int {
 }
 
 func (e *MatchExpr) End() int {
+	if e.Value.WithDoubleQuote {
+		return e.Value.End() + 1
+	}
+
 	return e.Value.End()
 }
 

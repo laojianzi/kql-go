@@ -115,7 +115,7 @@ func Test_parseMatchExpr(t *testing.T) {
 			input string
 			err   error
 		}{
-			{"", errors.New("expected value or match expr, but got Eof")},
+			{"", errors.New("expected field or value, but got Eof")},
 			{":", fmt.Errorf("expected field or value, but got %q", ":")},
 			{"<", fmt.Errorf("expected field or value, but got %q", "<")},
 			{">", fmt.Errorf("expected field or value, but got %q", ">")},
@@ -512,13 +512,282 @@ func Test_parseExpr(t *testing.T) {
 					},
 				},
 			},
+			{
+				"f1: v1 AND (f2 > 2 OR f3 < 3)",
+				&CombineExpr{
+					LeftExpr: &MatchExpr{
+						Field:    "f1",
+						Operator: TokenKindOperatorEql,
+						Value: &Literal{
+							pos:   4,
+							end:   6,
+							Kind:  TokenKindIdent,
+							Value: "v1",
+						},
+					},
+					Keyword: TokenKindKeywordAnd,
+					RightExpr: &WrapExpr{
+						pos:    11,
+						Layers: 1,
+						Expr: &CombineExpr{
+							LeftExpr: &MatchExpr{
+								pos:      12,
+								Field:    "f2",
+								Operator: TokenKindOperatorGtr,
+								Value: &Literal{
+									pos:   17,
+									end:   18,
+									Kind:  TokenKindInt,
+									Value: "2",
+								},
+							},
+							Keyword: TokenKindKeywordOr,
+							RightExpr: &MatchExpr{
+								pos:      22,
+								Field:    "f3",
+								Operator: TokenKindOperatorLss,
+								Value: &Literal{
+									pos:   27,
+									end:   28,
+									Kind:  TokenKindInt,
+									Value: "3",
+								},
+							},
+						},
+					},
+				},
+			},
+			{
+				"((f1 > 1 OR f2 < 2)) AND f3: v3",
+				&CombineExpr{
+					LeftExpr: &WrapExpr{
+						Layers: 2,
+						Expr: &CombineExpr{
+							LeftExpr: &MatchExpr{
+								pos:      2,
+								Field:    "f1",
+								Operator: TokenKindOperatorGtr,
+								Value: &Literal{
+									pos:   7,
+									end:   8,
+									Kind:  TokenKindInt,
+									Value: "1",
+								},
+							},
+							Keyword: TokenKindKeywordOr,
+							RightExpr: &MatchExpr{
+								pos:      12,
+								Field:    "f2",
+								Operator: TokenKindOperatorLss,
+								Value: &Literal{
+									pos:   17,
+									end:   18,
+									Kind:  TokenKindInt,
+									Value: "2",
+								},
+							},
+						},
+					},
+					Keyword: TokenKindKeywordAnd,
+					RightExpr: &MatchExpr{
+						pos:      25,
+						Field:    "f3",
+						Operator: TokenKindOperatorEql,
+						Value: &Literal{
+							pos:   29,
+							end:   31,
+							Kind:  TokenKindIdent,
+							Value: "v3",
+						},
+					},
+				},
+			},
+			{
+				"f1: v1 AND (f2 > 2 OR f3 < 3) AND f4: 4",
+				&CombineExpr{
+					LeftExpr: &MatchExpr{
+						Field:    "f1",
+						Operator: TokenKindOperatorEql,
+						Value: &Literal{
+							pos:   4,
+							end:   6,
+							Kind:  TokenKindIdent,
+							Value: "v1",
+						},
+					},
+					Keyword: TokenKindKeywordAnd,
+					RightExpr: &CombineExpr{
+						LeftExpr: &WrapExpr{
+							pos:    11,
+							Layers: 1,
+							Expr: &CombineExpr{
+								LeftExpr: &MatchExpr{
+									pos:      12,
+									Field:    "f2",
+									Operator: TokenKindOperatorGtr,
+									Value: &Literal{
+										pos:   17,
+										end:   18,
+										Kind:  TokenKindInt,
+										Value: "2",
+									},
+								},
+								Keyword: TokenKindKeywordOr,
+								RightExpr: &MatchExpr{
+									pos:      22,
+									Field:    "f3",
+									Operator: TokenKindOperatorLss,
+									Value: &Literal{
+										pos:   27,
+										end:   28,
+										Kind:  TokenKindInt,
+										Value: "3",
+									},
+								},
+							},
+						},
+						Keyword: TokenKindKeywordAnd,
+						RightExpr: &MatchExpr{
+							pos:      34,
+							Field:    "f4",
+							Operator: TokenKindOperatorEql,
+							Value: &Literal{
+								pos:   38,
+								end:   39,
+								Kind:  TokenKindInt,
+								Value: "4",
+							},
+						},
+					},
+				},
+			},
+			{
+				"f1: (v1 OR v11 AND v111) AND f2: v2",
+				&CombineExpr{
+					LeftExpr: &WrapExpr{
+						Field:  "f1",
+						Layers: 1,
+						Expr: &CombineExpr{
+							LeftExpr: &MatchExpr{
+								pos:      5,
+								Operator: TokenKindOperatorEql,
+								Value: &Literal{
+									pos:   5,
+									end:   7,
+									Kind:  TokenKindIdent,
+									Value: "v1",
+								},
+							},
+							Keyword: TokenKindKeywordOr,
+							RightExpr: &CombineExpr{
+								LeftExpr: &MatchExpr{
+									pos:      11,
+									Operator: TokenKindOperatorEql,
+									Value: &Literal{
+										pos:   11,
+										end:   14,
+										Kind:  TokenKindIdent,
+										Value: "v11",
+									},
+									HasNot: false,
+								},
+								Keyword: TokenKindKeywordAnd,
+								RightExpr: &MatchExpr{
+									pos:      19,
+									Operator: TokenKindOperatorEql,
+									Value: &Literal{
+										pos:   19,
+										end:   23,
+										Kind:  TokenKindIdent,
+										Value: "v111",
+									},
+								},
+							},
+						},
+					},
+					Keyword: TokenKindKeywordAnd,
+					RightExpr: &MatchExpr{
+						pos:      29,
+						Field:    "f2",
+						Operator: TokenKindOperatorEql,
+						Value: &Literal{
+							pos:   33,
+							end:   35,
+							Kind:  TokenKindIdent,
+							Value: "v2",
+						},
+					},
+				},
+			},
+			{
+				"(f2: v2 AND f1: (((v1 OR v11 AND v111))))",
+				&WrapExpr{
+					Layers: 1,
+					Expr: &CombineExpr{
+						LeftExpr: &MatchExpr{
+							pos:      1,
+							Field:    "f2",
+							Operator: TokenKindOperatorEql,
+							Value: &Literal{
+								pos:   5,
+								end:   7,
+								Kind:  TokenKindIdent,
+								Value: "v2",
+							},
+						},
+						Keyword: TokenKindKeywordAnd,
+						RightExpr: &WrapExpr{
+							pos:    12,
+							Field:  "f1",
+							Layers: 3,
+							Expr: &CombineExpr{
+								LeftExpr: &MatchExpr{
+									pos:      19,
+									Operator: TokenKindOperatorEql,
+									Value: &Literal{
+										pos:   19,
+										end:   21,
+										Kind:  TokenKindIdent,
+										Value: "v1",
+									},
+								},
+								Keyword: TokenKindKeywordOr,
+								RightExpr: &CombineExpr{
+									LeftExpr: &MatchExpr{
+										pos:      25,
+										Operator: TokenKindOperatorEql,
+										Value: &Literal{
+											pos:   25,
+											end:   28,
+											Kind:  TokenKindIdent,
+											Value: "v11",
+										},
+										HasNot: false,
+									},
+									Keyword: TokenKindKeywordAnd,
+									RightExpr: &MatchExpr{
+										pos:      33,
+										Operator: TokenKindOperatorEql,
+										Value: &Literal{
+											pos:   33,
+											end:   37,
+											Kind:  TokenKindIdent,
+											Value: "v111",
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
 		}
 
 		for _, test := range tests {
 			t.Run(fmt.Sprintf("input: %s", test.input), func(t *testing.T) {
 				expr, err := New(test.input).parseExpr()
 				require.NoError(t, err)
-				require.EqualValues(t, expr, test.expr)
+				require.EqualValues(t, test.expr, expr)
 			})
 		}
 	})
@@ -528,7 +797,13 @@ func Test_parseExpr(t *testing.T) {
 			input  string
 			errMsg string
 		}{
-			{"AND f1: f2", "expected field or value, but got \"AND\""},
+			{"AND f1: v1", "expected field or value, but got \"AND\""},
+			{"f1: v1 AND (", "expected field or value, but got Eof"},
+			{"f1: v1 AND ()", "expected field or value, but got \")\""},
+			{"f1: v1 AND (f2 > 2", "expected token <Rparen>, but got \"Eof\""},
+			{"f1: (", "expected field or value, but got Eof"},
+			{"f1: ()", "expected field or value, but got \")\""},
+			{"f1: (f2 > 2", "expected token <Rparen>, but got \"Eof\""},
 		}
 
 		for _, test := range tests {
