@@ -23,7 +23,44 @@ func (p *defaultParser) Stmt() (Expr, error) {
 }
 
 func (p *defaultParser) parseExpr() (Expr, error) {
-	return p.parseCombineExpr(nil)
+	return p.parseWrapExpr(0)
+}
+
+func (p *defaultParser) parseWrapExpr(layers int) (Expr, error) {
+	oldCurrent := p.lexer.current
+	token, err := p.lexer.peekToken()
+	if err != nil {
+		return nil, err
+	}
+
+	if token.Kind == TokenKindLparen {
+		return p.parseWrapExpr(layers + 1)
+	}
+
+	p.lexer.current = oldCurrent // rollback current index
+
+	expr, err := p.parseCombineExpr(nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if layers == 0 {
+		return expr, nil
+	}
+
+	// close wrap
+	for i := 0; i < layers; i++ {
+		token, err = p.lexer.peekToken()
+		if err != nil {
+			return nil, err
+		}
+
+		if token.Kind != TokenKindRparen {
+			return nil, fmt.Errorf("expected token <Rparen>, but got %q", token.Kind.String())
+		}
+	}
+
+	return p.parseCombineExpr(&WrapExpr{pos: expr.Pos() - layers, Layers: layers, Expr: expr})
 }
 
 func (p *defaultParser) parseCombineExpr(left Expr) (Expr, error) {
@@ -35,10 +72,21 @@ func (p *defaultParser) parseCombineExpr(left Expr) (Expr, error) {
 		}
 
 		return p.parseCombineExpr(matchExpr)
-	case *MatchExpr:
+	case *MatchExpr, *WrapExpr:
 		return p.parseCombineExpr(&CombineExpr{LeftExpr: expr})
 	case *CombineExpr:
 		if p.isEof() {
+			if expr.Keyword.IsKeyword() {
+				return expr, nil
+			}
+
+			return expr.LeftExpr, nil
+		}
+
+		// try peek wrap close
+		if token, err := p.lexer.peekWrapper(); err == nil && token.Kind == TokenKindRparen {
+			// rollback pos
+			p.lexer.current = token.Pos
 			return expr.LeftExpr, nil
 		}
 
@@ -61,7 +109,7 @@ func (p *defaultParser) parseCombineExpr(left Expr) (Expr, error) {
 			return nil, err
 		}
 
-		expr.RightExpr, err = p.parseCombineExpr(nil)
+		expr.RightExpr, err = p.parseExpr()
 		if err != nil {
 			return nil, err
 		}
@@ -74,7 +122,7 @@ func (p *defaultParser) parseCombineExpr(left Expr) (Expr, error) {
 
 func (p *defaultParser) parseMatchExpr() (Expr, error) {
 	if p.isEof() {
-		return nil, errors.New("expected value or match expr, but got Eof")
+		return nil, errors.New("expected field or value, but got Eof")
 	}
 
 	pos := p.lexer.current
@@ -127,6 +175,33 @@ func (p *defaultParser) parseMatchExpr() (Expr, error) {
 	token, err = p.lexer.peekToken()
 	if err != nil {
 		return nil, err
+	}
+
+	// e.g. field: (...)
+	if token.Kind == TokenKindLparen {
+		p.lexer.current = token.Pos
+		wrapExpr, err := p.parseExpr()
+		if err != nil {
+			return nil, err
+		}
+
+		switch e := wrapExpr.(type) {
+		case *CombineExpr:
+			if left, ok := e.LeftExpr.(*WrapExpr); ok {
+				left.pos = expr.pos
+				left.Field = expr.Field
+			}
+
+			if right, ok := e.RightExpr.(*WrapExpr); ok {
+				right.pos = expr.pos
+				right.Field = expr.Field
+			}
+		case *WrapExpr:
+			e.pos = expr.pos
+			e.Field = expr.Field
+		}
+
+		return wrapExpr, nil
 	}
 
 	if !token.Kind.IsValue() {

@@ -22,6 +22,8 @@ func (l *defaultLexer) peekToken() (*Token, error) {
 	switch l.peekN(0) {
 	case ':', '<', '>': // operator
 		return l.peekOperator()
+	case '(', ')':
+		return l.peekWrapper()
 	case '+', '-': // with sign int or float
 		fallthrough // jump to number case
 	case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9': // int or float
@@ -105,7 +107,7 @@ func (l *defaultLexer) peekNumber() (*Token, error) {
 
 	for l.peekOk(i) {
 		b := l.peekN(i)
-		if unicode.IsSpace(rune(b)) {
+		if unicode.IsSpace(rune(b)) || b == ')' {
 			break
 		}
 
@@ -146,6 +148,27 @@ func (l *defaultLexer) peekOperator() (*Token, error) {
 	tok.Kind = ToOperator(tok.Value)
 
 	l.skipN(length)
+
+	return tok, nil
+}
+
+func (l *defaultLexer) peekWrapper() (*Token, error) {
+	tok := &Token{
+		Pos:   l.current,
+		End:   l.current + 1,
+		Value: l.slice(0, 1),
+	}
+
+	switch l.peekN(0) {
+	case '(':
+		tok.Kind = TokenKindLparen
+	case ')':
+		tok.Kind = TokenKindRparen
+	default:
+		return nil, fmt.Errorf("expected whitespace or Eof, but got %q", string(l.input[l.current]))
+	}
+
+	l.skipN(1)
 
 	return tok, nil
 }
