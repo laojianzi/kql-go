@@ -33,6 +33,7 @@ func (e *WrapExpr) String() string {
 	buf.WriteString(strings.Repeat("(", e.Layers))
 	buf.WriteString(e.Expr.String())
 	buf.WriteString(strings.Repeat(")", e.Layers))
+
 	return buf.String()
 }
 
@@ -79,6 +80,10 @@ func (e *MatchExpr) Pos() int {
 }
 
 func (e *MatchExpr) End() int {
+	if e.Value.WithDoubleQuote {
+		return e.Value.End() + 1
+	}
+
 	return e.Value.End()
 }
 

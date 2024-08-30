@@ -165,7 +165,7 @@ func (l *defaultLexer) peekWrapper() (*Token, error) {
 	case ')':
 		tok.Kind = TokenKindRparen
 	default:
-		return nil, fmt.Errorf("expected whitespace or Eof, but got %q", string(l.input[l.current]))
+		return nil, fmt.Errorf("expected token \"(\" or \")\", but got %q", string(l.input[l.current]))
 	}
 
 	l.skipN(1)

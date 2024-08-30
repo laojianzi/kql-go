@@ -28,6 +28,7 @@ func (p *defaultParser) parseExpr() (Expr, error) {
 
 func (p *defaultParser) parseWrapExpr(layers int) (Expr, error) {
 	oldCurrent := p.lexer.current
+
 	token, err := p.lexer.peekToken()
 	if err != nil {
 		return nil, err
@@ -84,10 +85,13 @@ func (p *defaultParser) parseCombineExpr(left Expr) (Expr, error) {
 		}
 
 		// try peek wrap close
-		if token, err := p.lexer.peekWrapper(); err == nil && token.Kind == TokenKindRparen {
+		if token, err := p.lexer.peekWrapper(); err == nil {
 			// rollback pos
 			p.lexer.current = token.Pos
-			return expr.LeftExpr, nil
+
+			if token.Kind == TokenKindRparen {
+				return expr.LeftExpr, nil
+			}
 		}
 
 		if err := p.lexer.peekWhitespace(); err != nil {
@@ -120,6 +124,8 @@ func (p *defaultParser) parseCombineExpr(left Expr) (Expr, error) {
 	return nil, fmt.Errorf("unexpected Expr(%T)", left)
 }
 
+// need fix lint (funlen)
+// //nolint: funlen
 func (p *defaultParser) parseMatchExpr() (Expr, error) {
 	if p.isEof() {
 		return nil, errors.New("expected field or value, but got Eof")
@@ -150,10 +156,10 @@ func (p *defaultParser) parseMatchExpr() (Expr, error) {
 		return nil, fmt.Errorf("expected field or value, but got %q", token.Kind.String())
 	}
 
-	// maby is field or value
-	mabyValue := &Literal{token.Pos, token.End, token.Kind, token.Value, token.Kind == TokenKindString}
+	// maybe is field or value
+	maybeValue := &Literal{token.Pos, token.End, token.Kind, token.Value, token.Kind == TokenKindString}
 	// default operator = ":" if only value
-	expr := &MatchExpr{pos: pos, HasNot: hasNot, Operator: TokenKindOperatorEql, Value: mabyValue}
+	expr := &MatchExpr{pos: pos, HasNot: hasNot, Operator: TokenKindOperatorEql, Value: maybeValue}
 
 	if p.isEof() {
 		return expr, nil
@@ -165,12 +171,12 @@ func (p *defaultParser) parseMatchExpr() (Expr, error) {
 	}
 
 	if !token.Kind.IsOperator() {
-		p.lexer.current = mabyValue.end
+		p.lexer.current = expr.End()
 
 		return expr, nil
 	}
 
-	expr.Field, expr.Operator = mabyValue.Value, token.Kind
+	expr.Field, expr.Operator = maybeValue.Value, token.Kind
 
 	token, err = p.lexer.peekToken()
 	if err != nil {
@@ -179,29 +185,7 @@ func (p *defaultParser) parseMatchExpr() (Expr, error) {
 
 	// e.g. field: (...)
 	if token.Kind == TokenKindLparen {
-		p.lexer.current = token.Pos
-		wrapExpr, err := p.parseExpr()
-		if err != nil {
-			return nil, err
-		}
-
-		switch e := wrapExpr.(type) {
-		case *CombineExpr:
-			if left, ok := e.LeftExpr.(*WrapExpr); ok {
-				left.pos = expr.pos
-				left.Field = expr.Field
-			}
-
-			if right, ok := e.RightExpr.(*WrapExpr); ok {
-				right.pos = expr.pos
-				right.Field = expr.Field
-			}
-		case *WrapExpr:
-			e.pos = expr.pos
-			e.Field = expr.Field
-		}
-
-		return wrapExpr, nil
+		return p.parseWrapExprInMatchExpr(token, expr)
 	}
 
 	if !token.Kind.IsValue() {
@@ -211,6 +195,33 @@ func (p *defaultParser) parseMatchExpr() (Expr, error) {
 	expr.Value = &Literal{token.Pos, token.End, token.Kind, token.Value, token.Kind == TokenKindString}
 
 	return expr, nil
+}
+
+func (p *defaultParser) parseWrapExprInMatchExpr(token *Token, matchExpr *MatchExpr) (Expr, error) {
+	p.lexer.current = token.Pos
+
+	wrapExpr, err := p.parseExpr()
+	if err != nil {
+		return nil, err
+	}
+
+	switch e := wrapExpr.(type) {
+	case *CombineExpr:
+		if left, ok := e.LeftExpr.(*WrapExpr); ok {
+			left.pos = matchExpr.pos
+			left.Field = matchExpr.Field
+		}
+
+		if right, ok := e.RightExpr.(*WrapExpr); ok {
+			right.pos = matchExpr.pos
+			right.Field = matchExpr.Field
+		}
+	case *WrapExpr:
+		e.pos = matchExpr.pos
+		e.Field = matchExpr.Field
+	}
+
+	return wrapExpr, nil
 }
 
 func (p *defaultParser) isEof() bool {
