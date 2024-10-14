@@ -4,226 +4,185 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-)
 
-type Parser interface {
-	Stmt() (Expr, error)
-}
+	"github.com/laojianzi/kql-go"
+	"github.com/laojianzi/kql-go/ast"
+	"github.com/laojianzi/kql-go/token"
+)
 
 type defaultParser struct {
 	lexer *defaultLexer
 }
 
-func New(s string) *defaultParser { // skipcq: RVV-B0011
-	return &defaultParser{lexer: &defaultLexer{input: strings.TrimSpace(s)}}
+// New creates a new KQL parser.
+func New(input string) kql.Parser {
+	return &defaultParser{lexer: &defaultLexer{Value: []rune(strings.TrimSpace(input))}}
 }
 
-func (p *defaultParser) Stmt() (Expr, error) {
-	return p.parseExpr()
-}
-
-func (p *defaultParser) parseExpr() (Expr, error) {
-	return p.parseWrapExpr(0)
-}
-
-func (p *defaultParser) parseWrapExpr(layers int) (Expr, error) {
-	oldCurrent := p.lexer.current
-
-	token, err := p.lexer.peekToken()
+// Stmt parses a statement from the input.
+func (p *defaultParser) Stmt() (ast.Expr, error) {
+	expr, err := p.stmt()
 	if err != nil {
-		return nil, err
+		return nil, p.toKQLError(err)
 	}
-
-	if token.Kind == TokenKindLparen {
-		return p.parseWrapExpr(layers + 1)
-	}
-
-	p.lexer.current = oldCurrent // rollback current index
-
-	expr, err := p.parseCombineExpr(nil)
-	if err != nil {
-		return nil, err
-	}
-
-	if layers == 0 {
-		return expr, nil
-	}
-
-	// close wrap
-	for i := 0; i < layers; i++ {
-		token, err = p.lexer.peekToken()
-		if err != nil {
-			return nil, err
-		}
-
-		if token.Kind != TokenKindRparen {
-			return nil, fmt.Errorf("expected token <Rparen>, but got %q", token.Kind.String())
-		}
-	}
-
-	return p.parseCombineExpr(&WrapExpr{pos: expr.Pos() - layers, Layers: layers, Expr: expr})
-}
-
-func (p *defaultParser) parseCombineExpr(left Expr) (Expr, error) {
-	switch expr := left.(type) {
-	case nil:
-		matchExpr, err := p.parseMatchExpr()
-		if err != nil {
-			return nil, err
-		}
-
-		return p.parseCombineExpr(matchExpr)
-	case *MatchExpr, *WrapExpr:
-		return p.parseCombineExpr(&CombineExpr{LeftExpr: expr})
-	case *CombineExpr:
-		if p.isEof() {
-			if expr.Keyword.IsKeyword() {
-				return expr, nil
-			}
-
-			return expr.LeftExpr, nil
-		}
-
-		// try peek wrap close
-		if token, err := p.lexer.peekWrapper(); err == nil {
-			// rollback pos
-			p.lexer.current = token.Pos
-
-			if token.Kind == TokenKindRparen {
-				return expr.LeftExpr, nil
-			}
-		}
-
-		if err := p.lexer.peekWhitespace(); err != nil {
-			return nil, err
-		}
-
-		token, err := p.lexer.peekToken()
-		if err != nil {
-			return nil, err
-		}
-
-		if !token.Kind.IsKeyword() {
-			return nil, KeywordsExpected(token.Kind.String())
-		}
-
-		expr.Keyword = token.Kind
-
-		if err := p.lexer.peekWhitespace(); err != nil {
-			return nil, err
-		}
-
-		expr.RightExpr, err = p.parseExpr()
-		if err != nil {
-			return nil, err
-		}
-
-		return expr, nil
-	}
-
-	return nil, fmt.Errorf("unexpected Expr(%T)", left)
-}
-
-// need fix lint (funlen)
-// //nolint: funlen
-func (p *defaultParser) parseMatchExpr() (Expr, error) {
-	if p.isEof() {
-		return nil, errors.New("expected field or value, but got Eof")
-	}
-
-	pos := p.lexer.current
-
-	token, err := p.lexer.peekToken()
-	if err != nil {
-		return nil, err
-	}
-
-	var hasNot bool
-	if token.Kind == TokenKindKeywordNot {
-		hasNot = true
-
-		if err := p.lexer.peekWhitespace(); err != nil {
-			return nil, err
-		}
-
-		// get token for next step
-		if token, err = p.lexer.peekToken(); err != nil {
-			return nil, err
-		}
-	}
-
-	if !token.Kind.IsField() && !token.Kind.IsValue() {
-		return nil, fmt.Errorf("expected field or value, but got %q", token.Kind.String())
-	}
-
-	// maybe is field or value
-	maybeValue := &Literal{token.Pos, token.End, token.Kind, token.Value, token.Kind == TokenKindString}
-	// default operator = ":" if only value
-	expr := &MatchExpr{pos: pos, HasNot: hasNot, Operator: TokenKindOperatorEql, Value: maybeValue}
-
-	if p.isEof() {
-		return expr, nil
-	}
-
-	token, err = p.lexer.peekToken()
-	if err != nil {
-		return nil, err
-	}
-
-	if !token.Kind.IsOperator() {
-		p.lexer.current = expr.End()
-
-		return expr, nil
-	}
-
-	expr.Field, expr.Operator = maybeValue.Value, token.Kind
-
-	token, err = p.lexer.peekToken()
-	if err != nil {
-		return nil, err
-	}
-
-	// e.g. field: (...)
-	if token.Kind == TokenKindLparen {
-		return p.parseWrapExprInMatchExpr(token, expr)
-	}
-
-	if !token.Kind.IsValue() {
-		return nil, fmt.Errorf("expected value, but got %q", token.Kind.String())
-	}
-
-	expr.Value = &Literal{token.Pos, token.End, token.Kind, token.Value, token.Kind == TokenKindString}
 
 	return expr, nil
 }
 
-func (p *defaultParser) parseWrapExprInMatchExpr(token *Token, matchExpr *MatchExpr) (Expr, error) {
-	p.lexer.current = token.Pos
+func (p *defaultParser) stmt() (ast.Expr, error) {
+	if strings.TrimSpace(string(p.lexer.Value)) == "" {
+		return nil, errors.New("expected KQL string, but got empty string")
+	}
 
-	wrapExpr, err := p.parseExpr()
+	stmt, err := p.parseExpr()
 	if err != nil {
 		return nil, err
 	}
 
-	switch e := wrapExpr.(type) {
-	case *CombineExpr:
-		if left, ok := e.LeftExpr.(*WrapExpr); ok {
-			left.pos = matchExpr.pos
-			left.Field = matchExpr.Field
-		}
-
-		if right, ok := e.RightExpr.(*WrapExpr); ok {
-			right.pos = matchExpr.pos
-			right.Field = matchExpr.Field
-		}
-	case *WrapExpr:
-		e.pos = matchExpr.pos
-		e.Field = matchExpr.Field
+	if p.lexer.Token.Kind != token.TokenKindEof {
+		return nil, fmt.Errorf("expected <EOF>, but got %q", p.lexer.Token.Kind.String())
 	}
 
-	return wrapExpr, nil
+	return stmt, nil
 }
 
-func (p *defaultParser) isEof() bool {
-	return p.lexer.isEof()
+func (p *defaultParser) parseExpr() (ast.Expr, error) {
+	if err := p.lexer.nextToken(); err != nil {
+		return nil, err
+	}
+
+	expr, err := p.parseBinary()
+	if err != nil {
+		return nil, err
+	}
+
+	return p.parseCombine(expr)
+}
+
+func (p *defaultParser) parseCombine(left ast.Expr) (ast.Expr, error) {
+	kind := p.lexer.Token.Kind
+	if kind == token.TokenKindEof || kind == token.TokenKindRparen {
+		return left, nil
+	}
+
+	if !kind.IsKeyword() && kind != token.TokenKindKeywordNot {
+		return nil, token.KeywordsExpected(p.lexer.Token.Kind.String())
+	}
+
+	if err := p.lexer.nextToken(); err != nil {
+		return nil, err
+	}
+
+	right, err := p.parseBinary()
+	if err != nil {
+		return nil, err
+	}
+
+	return p.parseCombine(&ast.CombineExpr{
+		LeftExpr:  left,
+		Keyword:   kind,
+		RightExpr: right,
+	})
+}
+
+func (p *defaultParser) parseBinary() (ast.Expr, error) {
+	pos, hasNot := 0, false
+
+	if p.lexer.Token.Kind == token.TokenKindKeywordNot {
+		pos = p.lexer.Token.Pos
+		hasNot = true
+
+		if err := p.lexer.nextToken(); err != nil {
+			return nil, err
+		}
+	}
+
+	expr, err := p.parseLiteral()
+	if err != nil {
+		return nil, err
+	}
+
+	if !hasNot {
+		pos = expr.Pos()
+	}
+
+	op := p.lexer.Token.Kind
+	if !op.IsOperator() {
+		return ast.NewBinaryExpr(pos, "", 0, expr, hasNot), nil
+	}
+
+	if err := p.lexer.nextToken(); err != nil {
+		return nil, err
+	}
+
+	right, err := p.parseLiteral()
+	if err != nil {
+		return nil, err
+	}
+
+	return ast.NewBinaryExpr(pos, expr.String(), op, right, hasNot), nil
+}
+
+func (p *defaultParser) parseLiteral() (ast.Expr, error) {
+	kind := p.lexer.Token.Kind
+	if kind == token.TokenKindLparen {
+		return p.parseParen()
+	}
+
+	switch kind {
+	case token.TokenKindInt, token.TokenKindFloat, token.TokenKindString, token.TokenKindIdent:
+		tok, err := p.expect(kind)
+		if err != nil {
+			return nil, err
+		}
+
+		pos, end := tok.Pos, tok.End
+		if kind == token.TokenKindString { // with double quote "
+			pos -= 1
+			end += 1
+		}
+
+		return ast.NewLiteral(pos, end, kind, tok.Value), nil
+	}
+
+	return nil, fmt.Errorf("unexpected token: %s", kind)
+}
+
+func (p *defaultParser) parseParen() (ast.Expr, error) {
+	tok := p.lexer.Token
+
+	expr, err := p.parseExpr()
+	if err != nil {
+		return nil, err
+	}
+
+	if p.lexer.Token.Kind != token.TokenKindRparen {
+		return nil, fmt.Errorf("expected token <Rparen>, but got %q", p.lexer.Token.Kind.String())
+	}
+
+	rparen := p.lexer.Token.End
+
+	if err := p.lexer.nextToken(); err != nil {
+		return nil, err
+	}
+
+	return ast.NewParenExpr(tok.Pos, rparen, expr), nil
+}
+
+func (p *defaultParser) expect(kind token.Kind) (*Token, error) {
+	if p.lexer.Token.Kind != kind {
+		return nil, fmt.Errorf("expected token: %s, but: %s", kind, p.lexer.Token.Kind)
+	}
+
+	t := p.lexer.Token.Clone()
+
+	if err := p.lexer.nextToken(); err != nil {
+		return nil, err
+	}
+
+	return t, nil
+}
+
+func (p *defaultParser) toKQLError(err error) error {
+	return kql.NewError(string(p.lexer.Value), p.lexer.lastTokenKind, p.lexer.pos, err)
 }

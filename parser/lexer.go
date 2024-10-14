@@ -5,216 +5,258 @@ import (
 	"fmt"
 	"unicode"
 	"unicode/utf8"
+
+	"github.com/laojianzi/kql-go/token"
 )
 
 type defaultLexer struct {
-	input   string
-	current int
+	Value []rune
+	Token Token
+
+	pos           int
+	lastTokenKind token.Kind
+	dotIdent      bool
 }
 
-func (l *defaultLexer) peekToken() (*Token, error) {
-	l.skipWhitespace()
+func (l *defaultLexer) nextToken() error {
+	l.lastTokenKind = l.Token.Kind
 
-	if l.isEof() {
-		return &Token{Kind: TokenKindEof}, nil
+	for {
+		i := l.pos
+		l.skipSpaces()
+
+		if l.pos == i {
+			break
+		}
 	}
 
-	switch l.peekN(0) {
+	l.Token = Token{Pos: l.pos}
+	defer func() {
+		l.Token.End = l.pos
+		if l.Token.Kind == token.TokenKindString { // skip the double quote "
+			l.Token.Pos += 1
+			l.Token.End -= 1
+		}
+	}()
+
+	if !l.dotIdent {
+		return l.consumeToken()
+	}
+
+	l.dotIdent = false
+
+	return l.consumeFieldToken()
+}
+
+func (l *defaultLexer) consumeToken() error {
+	if l.eof() {
+		l.Token.Kind = token.TokenKindEof
+
+		return nil
+	}
+
+	switch l.peek(0) {
 	case ':', '<', '>': // operator
-		return l.peekOperator()
+		return l.consumeOperator()
 	case '(', ')':
-		return l.peekWrapper()
+		return l.consumeParen()
 	case '+', '-': // with sign int or float
 		fallthrough // jump to number case
 	case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9': // int or float
-		return l.peekNumber()
+		return l.consumeNumber()
 	case '"': // double quote string
-		return l.peekString()
+		return l.consumeString()
 	case '*': // e.g * or *xx* or *"xx"*
 	}
 
 	// ident as keyword, field or value
-	return l.peekIdent()
+	return l.consumeIdent()
 }
 
-func (l *defaultLexer) peekIdent() (*Token, error) {
+func (l *defaultLexer) consumeFieldToken() error {
+	if l.peekOk(0) && !unicode.IsSpace(rune(l.peek(0))) && !l.eof() {
+		i := 0
+		for l.peekOk(i) && !unicode.IsSpace(rune(l.peek(i))) && !l.eof() {
+			i++
+		}
+
+		l.Token.Kind = token.TokenKindIdent
+		l.Token.Value = string(l.Value[l.pos : l.pos+i])
+		l.skipN(i)
+
+		return nil
+	}
+
+	return l.consumeToken()
+}
+
+func (l *defaultLexer) consumeIdent() error {
 	var i int
-	for l.peekOk(i) && !unicode.IsSpace(rune(l.peekN(i))) && !l.isEof() {
-		if l.peekN(i) == '\\' && l.peekOk(i+1) && isRequireEscape(l.peekN(i+1)) {
+	for l.peekOk(i) && !unicode.IsSpace(rune(l.peek(i))) && !l.eof() {
+		if l.peek(i) == '\\' && l.peekOk(i+1) && requireEscape(l.peek(i+1)) {
 			i += 2
 
 			continue
 		}
 
-		if isRequireEscape(l.peekN(i)) {
+		if requireEscape(l.peek(i)) {
 			break
 		}
 
 		i++
 	}
 
-	tok := &Token{
-		Kind:  TokenKindIdent,
-		Value: l.slice(0, i),
-		Pos:   l.current,
-		End:   l.current + i,
-	}
+	l.Token.Kind = token.TokenKindIdent
+	l.Token.Value = string(l.Value[l.pos : l.pos+i])
 
-	if IsKeyword(tok.Value) {
-		tok.Kind = ToKeyword(tok.Value)
+	if token.IsKeyword(l.Token.Value) {
+		l.Token.Kind = token.ToKeyword(l.Token.Value)
 	}
 
 	l.skipN(i)
 
-	return tok, nil
+	return nil
 }
 
-func (l *defaultLexer) peekString() (*Token, error) {
-	i, endChar := 1, byte('"')
-	for l.peekOk(i) && l.peekN(i) != endChar {
+func (l *defaultLexer) consumeString() error {
+	i, endChar := 1, rune('"')
+	for l.peekOk(i) && l.peek(i) != endChar {
 		i++
 	}
 
 	if !l.peekOk(i) {
-		return nil, errors.New("expected double quote closed")
+		return errors.New("expected double quote closed")
 	}
 
-	defer l.skipN(i + 1) // cannot be called before pos/end are set
+	l.Token.Kind = token.TokenKindString
+	l.Token.Value = l.slice(1, i)
 
-	return &Token{
-		Kind:  TokenKindString,
-		Value: l.slice(1, i),
-		Pos:   l.current + 1,
-		End:   l.current + i,
-	}, nil
+	l.skipN(i + 1)
+
+	return nil
 }
 
-func (l *defaultLexer) peekNumber() (*Token, error) {
+func (l *defaultLexer) consumeNumber() error {
 	var i int
-	if l.peekN(0) == '+' || l.peekN(0) == '-' { // skip sign
+	if l.peek(0) == '+' || l.peek(0) == '-' { // skip sign
 		if !l.peekOk(i + 1) {
-			return nil, fmt.Errorf("expected digit, but got Eof")
+			return fmt.Errorf("expected digit, but got Eof")
 		}
 
-		if nextChar := rune(l.peekN(i + 1)); !unicode.IsDigit(nextChar) {
-			return nil, fmt.Errorf("expected digit, but got %q", string(nextChar))
+		if nextChar := l.peek(i + 1); !unicode.IsDigit(nextChar) {
+			return fmt.Errorf("expected digit, but got %q", string(nextChar))
 		}
 
 		i++
 	}
 
-	tok := &Token{Pos: l.current, Kind: TokenKindInt}
+	l.Token.Kind = token.TokenKindInt
 
 	for l.peekOk(i) {
-		b := l.peekN(i)
+		b := l.peek(i)
 		if unicode.IsSpace(rune(b)) || b == ')' {
 			break
 		}
 
 		if !unicode.IsDigit(rune(b)) && b != '.' {
-			return nil, fmt.Errorf("expected digit or decimal point, but got %q", string(b))
+			return fmt.Errorf("expected digit or decimal point, but got %q", string(b))
 		}
 
 		if b == '.' {
 			if !l.peekOk(i + 1) {
-				return nil, fmt.Errorf("expected digit, but got Eof")
+				return fmt.Errorf("expected digit, but got Eof")
 			}
 
-			if nextChar := rune(l.peekN(i + 1)); !unicode.IsDigit(nextChar) {
-				return nil, fmt.Errorf("expected digit, but got %q", string(nextChar))
+			if nextChar := l.peek(i + 1); !unicode.IsDigit(nextChar) {
+				return fmt.Errorf("expected digit, but got %q", string(nextChar))
 			}
 
-			tok.Kind = TokenKindFloat
+			l.Token.Kind = token.TokenKindFloat
 		}
 
 		i++
 	}
 
-	tok.Value = l.slice(0, i)
-	tok.End = l.current + i
+	l.Token.Value = l.slice(0, i)
+
 	l.skipN(i)
 
-	return tok, nil
+	return nil
 }
 
-func (l *defaultLexer) peekOperator() (*Token, error) {
-	length, tok := 1, &Token{Pos: l.current}
-	if (l.peekN(0) == '<' || l.peekN(0) == '>') && l.peekOk(1) && l.peekN(1) == '=' { // <= or >=
+func (l *defaultLexer) consumeOperator() error {
+	length := 1
+	if (l.peek(0) == '<' || l.peek(0) == '>') && l.peekOk(1) && l.peek(1) == '=' { // <= or >=
 		length = 2
 	}
 
-	tok.End = l.current + length
-	tok.Value = l.slice(0, length)
-	tok.Kind = ToOperator(tok.Value)
+	l.Token.Value = l.slice(0, length)
+	l.Token.Kind = token.ToOperator(l.Token.Value)
 
 	l.skipN(length)
 
-	return tok, nil
+	return nil
 }
 
-func (l *defaultLexer) peekWrapper() (*Token, error) {
-	tok := &Token{
-		Pos:   l.current,
-		End:   l.current + 1,
-		Value: l.slice(0, 1),
-	}
+func (l *defaultLexer) consumeParen() error {
+	l.Token.Value = l.slice(0, 1)
 
-	switch l.peekN(0) {
+	switch l.peek(0) {
 	case '(':
-		tok.Kind = TokenKindLparen
+		l.Token.Kind = token.TokenKindLparen
 	case ')':
-		tok.Kind = TokenKindRparen
+		l.Token.Kind = token.TokenKindRparen
 	default:
-		return nil, fmt.Errorf("expected token \"(\" or \")\", but got %q", string(l.input[l.current]))
+		return fmt.Errorf("expected token \"(\" or \")\", but got %q", string(l.peek(0)))
 	}
 
 	l.skipN(1)
 
-	return tok, nil
+	return nil
 }
 
-func (l *defaultLexer) peekWhitespace() error {
-	oldCurrent := l.current
-	l.skipWhitespace()
-
-	if l.isEof() || oldCurrent < l.current {
-		return nil
-	}
-
-	return fmt.Errorf("expected whitespace or Eof, but got %q", string(l.input[l.current]))
-}
-
-func (l *defaultLexer) skipWhitespace() {
-	for !l.isEof() {
-		r, size := utf8.DecodeRuneInString(l.input[l.current:])
+func (l *defaultLexer) skipSpaces() {
+	for !l.eof() {
+		r, size := utf8.DecodeRuneInString(string(l.Value[l.pos:]))
 		if !unicode.IsSpace(r) {
-			break
+			return
 		}
 
-		l.current += size
+		l.skipN(size)
 	}
+}
+
+func (l *defaultLexer) skip() rune {
+	r := l.Value[l.pos]
+	l.pos++
+
+	return r
 }
 
 func (l *defaultLexer) skipN(n int) {
-	l.current += n
+	l.pos += n
 }
 
-func (l *defaultLexer) slice(i, j int) string {
-	return l.input[l.current+i : l.current+j]
+func (l *defaultLexer) peek(i int) rune {
+	return l.Value[l.pos+i]
 }
 
-func (l *defaultLexer) peekN(n int) byte {
-	return l.input[l.current+n]
+func (l *defaultLexer) peekOk(i int) bool {
+	return l.pos+i < len(l.Value)
 }
 
-func (l *defaultLexer) peekOk(n int) bool {
-	return l.current+n < len(l.input)
+func (l *defaultLexer) slice(start, end int) string {
+	if len(l.Value) < l.pos+end {
+		end = len(l.Value) - l.pos
+	}
+
+	return string(l.Value[l.pos+start : l.pos+end])
 }
 
-func (l *defaultLexer) isEof() bool {
-	return l.current >= len(l.input)
+func (l *defaultLexer) eof() bool {
+	return l.pos >= len(l.Value)
 }
 
-func isRequireEscape(b byte) bool {
-	return b == '"' || IsSpecialChar(string(b)) || b == '\\'
+func requireEscape(r rune) bool {
+	return r == '"' || token.IsSpecialChar(string(r)) || r == '\\'
 }
