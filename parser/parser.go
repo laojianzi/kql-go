@@ -31,7 +31,7 @@ func (p *defaultParser) Stmt() (ast.Expr, error) {
 
 func (p *defaultParser) stmt() (ast.Expr, error) {
 	if strings.TrimSpace(string(p.lexer.Value)) == "" {
-		return nil, errors.New("expected KQL string, but got empty string")
+		return nil, errors.New("expected KQL(kibana query language) string, but got empty string")
 	}
 
 	stmt, err := p.parseExpr()

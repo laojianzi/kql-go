@@ -14,7 +14,7 @@ func Example_simple() {
 		panic(err)
 	}
 
-	// output AST to KQL query
+	// output AST to KQL(kibana query language) query
 	fmt.Println(stmt.String())
 	// output:
 	// service_name: "redis" OR service_name: "mysql" AND NOT level: "error" AND start_time > 1723286863 AND latency >= 1.5
@@ -28,7 +28,7 @@ func Example_withParen() {
 		panic(err)
 	}
 
-	// output AST to KQL query
+	// output AST to KQL(kibana query language) query
 	fmt.Println(stmt.String())
 	// output:
 	// (service_name: "redis" OR service_name: "mysql" AND level: ("error" OR "warn") AND (NOT (start_time > 1723286863 AND latency >= 1.5))) AND end_time < 1723386863

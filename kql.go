@@ -9,13 +9,13 @@ import (
 	"github.com/laojianzi/kql-go/token"
 )
 
-// Parser is an interface capability that needs to be provided externally when implementing a kql parser.
+// Parser is an interface capability that needs to be provided externally when implementing a KQL(kibana query language) parser.
 type Parser interface {
-	// Stmt parses a KQL expression(AST).
+	// Stmt parses a KQL(kibana query language) expression(AST).
 	Stmt() (ast.Expr, error)
 }
 
-// Error is an error that occurs when parsing a KQL expression, which carries the context.
+// Error is an error that occurs when parsing a KQL(kibana query language) expression, which carries the context.
 type Error struct {
 	s             string
 	lastTokenKind token.Kind
