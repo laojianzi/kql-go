@@ -1,8 +1,10 @@
 package parser_test
 
 import (
+	"errors"
 	"testing"
 
+	"github.com/laojianzi/kql-go"
 	"github.com/laojianzi/kql-go/ast"
 	"github.com/laojianzi/kql-go/parser"
 	"github.com/laojianzi/kql-go/token"
@@ -109,6 +111,10 @@ func Test_defaultParser_Stmt(t *testing.T) {
 				),
 			},
 			{
+				input: "NOT f: v",
+				want:  ast.NewBinaryExpr(0, "f", token.TokenKindOperatorEql, ast.NewLiteral(7, 8, token.TokenKindIdent, "v"), true),
+			},
+			{
 				input: `f1: "v1" AND f2 > 2`,
 				want: ast.NewCombineExpr(
 					ast.NewBinaryExpr(0, "f1", token.TokenKindOperatorEql, ast.NewLiteral(4, 8, token.TokenKindString, "v1"), false),
@@ -116,22 +122,34 @@ func Test_defaultParser_Stmt(t *testing.T) {
 					ast.NewBinaryExpr(13, "f2", token.TokenKindOperatorGtr, ast.NewLiteral(18, 19, token.TokenKindInt, "2"), false),
 				),
 			},
-			// {
-			// 	input: `f1: "v1" AND NOT f2 > 2`,
-			// 	want: ast.NewCombineExpr(
-			// 		ast.NewBinaryExpr(0, "f1", token.TokenKindOperatorEql, ast.NewLiteral(4, 8, token.TokenKindString, "v1"), false),
-			// 		token.TokenKindKeywordAnd,
-			// 		ast.NewBinaryExpr(13, "f2", token.TokenKindOperatorGtr, ast.NewLiteral(18, 19, token.TokenKindInt, "2"), true),
-			// 	),
-			// },
-			// {
-			// 	input: `f1: "v1" AND f2 > 2 OR f3 < 0.3 AND NOT f4 >= 4 OR NOT f5 <= 5.0`,
-			// 	want: ast.NewCombineExpr(
-			// 		ast.NewBinaryExpr(0, "f1", token.TokenKindOperatorEql, ast.NewLiteral(4, 8, token.TokenKindString, "v1"), false),
-			// 		token.TokenKindKeywordAnd,
-			// 		ast.NewBinaryExpr(13, "f2", token.TokenKindOperatorGtr, ast.NewLiteral(18, 19, token.TokenKindInt, "2"), false),
-			// 	),
-			// },
+			{
+				input: `f1: "v1" AND NOT f2 > 2`,
+				want: ast.NewCombineExpr(
+					ast.NewBinaryExpr(0, "f1", token.TokenKindOperatorEql, ast.NewLiteral(4, 8, token.TokenKindString, "v1"), false),
+					token.TokenKindKeywordAnd,
+					ast.NewBinaryExpr(13, "f2", token.TokenKindOperatorGtr, ast.NewLiteral(22, 23, token.TokenKindInt, "2"), true),
+				),
+			},
+			{
+				input: `f1: "v1" AND f2 > 2 OR f3 < 0.3 AND NOT f4 >= 4 OR NOT f5 <= 5.0`,
+				want: ast.NewCombineExpr(
+					ast.NewCombineExpr(
+						ast.NewCombineExpr(
+							ast.NewCombineExpr(
+								ast.NewBinaryExpr(0, "f1", token.TokenKindOperatorEql, ast.NewLiteral(4, 8, token.TokenKindString, "v1"), false),
+								token.TokenKindKeywordAnd,
+								ast.NewBinaryExpr(13, "f2", token.TokenKindOperatorGtr, ast.NewLiteral(18, 19, token.TokenKindInt, "2"), false),
+							),
+							token.TokenKindKeywordOr,
+							ast.NewBinaryExpr(23, "f3", token.TokenKindOperatorLss, ast.NewLiteral(28, 31, token.TokenKindFloat, "0.3"), false),
+						),
+						token.TokenKindKeywordAnd,
+						ast.NewBinaryExpr(36, "f4", token.TokenKindOperatorGeq, ast.NewLiteral(46, 47, token.TokenKindInt, "4"), true),
+					),
+					token.TokenKindKeywordOr,
+					ast.NewBinaryExpr(51, "f5", token.TokenKindOperatorLeq, ast.NewLiteral(61, 64, token.TokenKindFloat, "5.0"), true),
+				),
+			},
 		}
 
 		for _, c := range cases {
@@ -165,6 +183,42 @@ func Test_defaultParser_Stmt(t *testing.T) {
 				assert.NoError(t, err)
 				assert.EqualValues(t, c.want, stmt)
 				assert.Equal(t, c.input, stmt.String())
+			})
+		}
+	})
+
+	t.Run("expect kql error", func(t *testing.T) {
+		cases := []struct {
+			input string
+			want  error
+		}{
+			{
+				input: "foo bar",
+				want: kql.NewError(
+					"foo bar",
+					token.TokenKindIdent,
+					"bar",
+					4,
+					token.KeywordsExpected(token.TokenKindIdent.String()),
+				),
+			},
+			{
+				input: "foo: ",
+				want: kql.NewError(
+					"foo:",
+					token.TokenKindEof,
+					"",
+					4,
+					errors.New("unexpected token: Eof"),
+				),
+			},
+		}
+
+		for _, c := range cases {
+			t.Run(c.input, func(t *testing.T) {
+				_, err := parser.New(c.input).Stmt()
+				assert.Error(t, err)
+				assert.Equal(t, c.want.Error(), err.Error())
 			})
 		}
 	})

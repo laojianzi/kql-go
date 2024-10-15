@@ -18,14 +18,15 @@ type Parser interface {
 
 // Error is an error that occurs when parsing a KQL(kibana query language) expression, which carries the context.
 type Error struct {
-	s             string
-	lastTokenKind token.Kind
-	pos           int
-	err           error
+	s              string
+	lastTokenKind  token.Kind
+	lastTokenValue string
+	pos            int
+	err            error
 }
 
 // NewError creates a new kql error.
-func NewError(s string, lastTokenKind token.Kind, pos int, err error) error {
+func NewError(s string, lastTokenKind token.Kind, lastTokenValue string, pos int, err error) error {
 	if err == nil {
 		return nil
 	}
@@ -35,7 +36,7 @@ func NewError(s string, lastTokenKind token.Kind, pos int, err error) error {
 		return err
 	}
 
-	return &Error{s: s, lastTokenKind: lastTokenKind, pos: pos, err: err}
+	return &Error{s, lastTokenKind, lastTokenValue, pos, err}
 }
 
 // Error returns the error message.
@@ -44,6 +45,10 @@ func (e *Error) Error() string {
 		lineNo, column int
 		buf            strings.Builder
 	)
+
+	if e.pos > len(e.s) {
+		return e.err.Error()
+	}
 
 	for i := 0; i < e.pos; i++ {
 		if e.s[i] == '\n' {
@@ -67,7 +72,7 @@ func (e *Error) Error() string {
 			}
 
 			if e.lastTokenKind > 0 {
-				buf.WriteString(strings.Repeat("^", len(e.lastTokenKind.String())))
+				buf.WriteString(strings.Repeat("^", len(e.lastTokenValue)))
 			} else {
 				buf.WriteString("^")
 			}

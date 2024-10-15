@@ -184,5 +184,5 @@ func (p *defaultParser) expect(kind token.Kind) (*Token, error) {
 }
 
 func (p *defaultParser) toKQLError(err error) error {
-	return kql.NewError(string(p.lexer.Value), p.lexer.lastTokenKind, p.lexer.pos, err)
+	return kql.NewError(string(p.lexer.Value), p.lexer.lastTokenKind, p.lexer.Token.Value, p.lexer.Token.Pos, err)
 }
