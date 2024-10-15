@@ -37,7 +37,7 @@ jobs:
           version: latest
 
       - name: Test
-        run: go test -v -count=1 -race -shuffle=on -covermode=atomic -coverprofile=cover.out ./...
+        run: go test -v -count=1 -race -covermode=atomic -coverprofile=cover.out ./...
 
       - uses: deepsourcelabs/test-coverage-action@master
         with:
