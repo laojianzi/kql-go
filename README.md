@@ -6,7 +6,7 @@ The goal of this project is to build a KQL(kibana query language) parser in Go w
 - Parse KQL(kibana query language) query into AST
 - output AST to KQL(kibana query language) query
 
-This project is inspired by [clickhouse-sql-parser](https://github.com/AfterShip/clickhouse-sql-parser) which is a SQL parser for ClickHouse in Go.
+This project is inspired by [github.com/AfterShip/clickhouse-sql-parser] and [https://github.com/cloudspannerecosystem/memefish]. Both of these are SQL parsers implemented in Go.
 
 ## How to use
 
