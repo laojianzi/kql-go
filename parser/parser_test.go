@@ -1,7 +1,6 @@
 package parser_test
 
 import (
-	"encoding/json"
 	"testing"
 
 	"github.com/laojianzi/kql-go/ast"
@@ -139,10 +138,6 @@ func Test_defaultParser_Stmt(t *testing.T) {
 			t.Run(c.input, func(t *testing.T) {
 				stmt, err := parser.New(c.input).Stmt()
 				assert.NoError(t, err)
-				wantJSON, _ := json.Marshal(c.want)
-				t.Log(string(wantJSON))
-				stmtJSON, _ := json.Marshal(stmt)
-				t.Log(string(stmtJSON))
 				assert.EqualValues(t, c.want, stmt)
 				assert.Equal(t, c.input, stmt.String())
 			})
