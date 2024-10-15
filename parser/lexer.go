@@ -226,13 +226,6 @@ func (l *defaultLexer) skipSpaces() {
 	}
 }
 
-func (l *defaultLexer) skip() rune {
-	r := l.Value[l.pos]
-	l.pos++
-
-	return r
-}
-
 func (l *defaultLexer) skipN(n int) {
 	l.pos += n
 }

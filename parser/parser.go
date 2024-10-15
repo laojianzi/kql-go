@@ -21,7 +21,7 @@ func New(input string) kql.Parser {
 
 // Stmt parses a statement from the input.
 func (p *defaultParser) Stmt() (ast.Expr, error) {
-	expr, err := p.stmt()
+	expr, err := p.parseStmt()
 	if err != nil {
 		return nil, p.toKQLError(err)
 	}
@@ -29,7 +29,7 @@ func (p *defaultParser) Stmt() (ast.Expr, error) {
 	return expr, nil
 }
 
-func (p *defaultParser) stmt() (ast.Expr, error) {
+func (p *defaultParser) parseStmt() (ast.Expr, error) {
 	if strings.TrimSpace(string(p.lexer.Value)) == "" {
 		return nil, errors.New("expected KQL(kibana query language) string, but got empty string")
 	}
