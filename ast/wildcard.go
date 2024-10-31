@@ -14,7 +14,7 @@ type WildcardExpr struct {
 	Indexes []int // index of wildcard
 }
 
-// NewWildcard creates a new wildcard expression.
+// NewWildcardExpr creates a new wildcard expression.
 func NewWildcardExpr(lit *Literal, indexes []int) *WildcardExpr {
 	return &WildcardExpr{
 		Literal: lit,
