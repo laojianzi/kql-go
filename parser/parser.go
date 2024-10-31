@@ -124,28 +124,16 @@ func (p *defaultParser) parseBinary() (ast.Expr, error) {
 }
 
 func (p *defaultParser) parseLiteral() (ast.Expr, error) {
-	kind := p.lexer.Token.Kind
-	if kind == token.TokenKindLparen {
+	if p.lexer.Token.Kind == token.TokenKindLparen {
 		return p.parseParen()
 	}
 
-	switch kind {
+	switch p.lexer.Token.Kind {
 	case token.TokenKindInt, token.TokenKindFloat, token.TokenKindString, token.TokenKindIdent:
-		tok, err := p.expect(kind)
-		if err != nil {
-			return nil, err
-		}
-
-		pos, end := tok.Pos, tok.End
-		if kind == token.TokenKindString { // with double quote "
-			pos -= 1
-			end += 1
-		}
-
-		return ast.NewLiteral(pos, end, kind, tok.Value), nil
+		return p.parseWildcard()
 	}
 
-	return nil, fmt.Errorf("unexpected token: %s", kind)
+	return nil, fmt.Errorf("unexpected token: %s", p.lexer.Token.Kind)
 }
 
 func (p *defaultParser) parseParen() (ast.Expr, error) {
@@ -167,6 +155,41 @@ func (p *defaultParser) parseParen() (ast.Expr, error) {
 	}
 
 	return ast.NewParenExpr(tok.Pos, rparen, expr), nil
+}
+
+func (p *defaultParser) parseWildcard() (ast.Expr, error) {
+	kind := p.lexer.Token.Kind
+
+	tok, err := p.expect(kind)
+	if err != nil {
+		return nil, err
+	}
+
+	pos, end := tok.Pos, tok.End
+	if kind == token.TokenKindString { // with double quote "
+		pos -= 1
+		end += 1
+	}
+
+	lit := ast.NewLiteral(pos, end, kind, tok.Value)
+	if kind != token.TokenKindIdent && kind != token.TokenKindString {
+		return lit, nil
+	}
+
+	var indexes []int
+
+	runes := []rune(tok.Value)
+	for i := range runes {
+		if runes[i] == '*' && (i == 0 || runes[i-1] != '\\') { // skip escaped wildcard
+			indexes = append(indexes, i)
+		}
+	}
+
+	if len(indexes) == 0 { // not found wildcard
+		return lit, nil
+	}
+
+	return ast.NewWildcardExpr(lit, indexes), nil
 }
 
 func (p *defaultParser) expect(kind token.Kind) (*Token, error) {

@@ -66,7 +66,6 @@ func (l *defaultLexer) consumeToken() error {
 		return l.consumeNumber()
 	case '"': // double quote string
 		return l.consumeString()
-	case '*': // e.g * or *xx* or *"xx"*
 	}
 
 	// ident as keyword, field or value
