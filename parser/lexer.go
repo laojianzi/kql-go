@@ -101,7 +101,7 @@ func (l *defaultLexer) consumeFieldToken() error {
 }
 
 // shouldBreak checks if token collection should stop
-func (l *defaultLexer) shouldBreak(i int, isString bool, withEscape bool, endChar rune) bool {
+func (l *defaultLexer) shouldBreak(i int, isString, withEscape bool, endChar rune) bool {
 	if isString && !withEscape && l.peek(i) == endChar {
 		return true
 	}
@@ -139,8 +139,8 @@ func (l *defaultLexer) processNonEscaped(i int, kind token.Kind) bool {
 
 // consumeEscapedToken consumes a token that may contain escape sequences
 // Returns the number of characters consumed, the positions of escape characters, and any error
-func (l *defaultLexer) consumeEscapedToken(kind token.Kind, endChar rune) (int, []int, error) {
-	i, escape, buf, indexes := 0, false, &bytes.Buffer{}, []int(nil)
+func (l *defaultLexer) consumeEscapedToken(kind token.Kind, endChar rune) (i int, indexes []int, err error) {
+	escape, buf := false, &bytes.Buffer{}
 
 	isString := kind == token.TokenKindString
 	if isString {
@@ -152,11 +152,7 @@ func (l *defaultLexer) consumeEscapedToken(kind token.Kind, endChar rune) (int, 
 			break
 		}
 
-		var (
-			result CharProcResult
-			err    error
-		)
-
+		var result *CharProcResult
 		if escape {
 			result, err = l.handleEscaped(i, kind, buf, indexes)
 		} else {
@@ -171,9 +167,7 @@ func (l *defaultLexer) consumeEscapedToken(kind token.Kind, endChar rune) (int, 
 			break
 		}
 
-		i = result.Position
-		escape = result.IsEscaped
-		indexes = result.EscapeIndexes
+		i, escape, indexes = result.Position, result.IsEscaped, result.EscapeIndexes
 	}
 
 	if escape {

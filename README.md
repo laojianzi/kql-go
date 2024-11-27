@@ -81,9 +81,6 @@ go test -v -count=1 -race ./...
 
 # Run benchmarks
 go test -bench=. -benchmem ./...
-
-# Run fuzzing tests
-go test -fuzz=. ./...
 ```
 
 ## Examples

@@ -38,8 +38,14 @@ func (e *Literal) End() int {
 // String returns the string representation of the literal value.
 func (e *Literal) String() string {
 	value := e.Value
+
 	if len(e.escapeIndexes) > 0 {
-		runes, newValue, lastIndex := []rune(value), []rune{}, 0
+		var (
+			runes     = []rune(value)
+			newValue  []rune
+			lastIndex int
+		)
+
 		for _, escapeIndex := range e.escapeIndexes {
 			newValue = append(newValue, runes[lastIndex:escapeIndex]...)
 			newValue = append(newValue, '\\')

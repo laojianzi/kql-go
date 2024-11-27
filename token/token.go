@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+	"unicode/utf8"
 )
 
 // Kind represents token kind.
@@ -126,10 +127,11 @@ func IsSpecialChar(s string) bool {
 	return IsOperator(s) || s == TokenKindLparen.String() || s == TokenKindRparen.String()
 }
 
+var numberRegex = regexp.MustCompile(`^[+-]?\d+(\.\d+)?$`)
+
 // IsNumber checks if the string is a number.
 func IsNumber(s string) bool {
-	matched, _ := regexp.MatchString("^[+-]?\\d+(\\.\\d+)?$", s)
-	return matched
+	return numberRegex.MatchString(s)
 }
 
 // ToKeyword converts the string to a keyword Kind type.
@@ -178,7 +180,7 @@ func RequireEscape(s string, kind Kind) bool {
 		return false
 	}
 
-	if r := []rune(s)[0]; []rune(s)[0] == '"' || r == '\\' {
+	if r, _ := utf8.DecodeRuneInString(s); r == '"' || r == '\\' {
 		return true
 	}
 

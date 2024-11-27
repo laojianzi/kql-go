@@ -19,8 +19,8 @@ type CharProcResult struct {
 }
 
 // NewCharProcResult creates a new CharProcResult with the given values
-func NewCharProcResult(position int, isEscaped bool, escapeIndexes []int) CharProcResult {
-	return CharProcResult{
+func NewCharProcResult(position int, isEscaped bool, escapeIndexes []int) *CharProcResult {
+	return &CharProcResult{
 		Position:      position,
 		IsEscaped:     isEscaped,
 		EscapeIndexes: escapeIndexes,
@@ -34,7 +34,7 @@ func (r CharProcResult) String() string {
 }
 
 // handleNonEscaped processes a non-escaped character and updates the token state
-func (l *defaultLexer) handleNonEscaped(pos int, k token.Kind, buf *bytes.Buffer, indexes []int) CharProcResult {
+func (l *defaultLexer) handleNonEscaped(pos int, k token.Kind, buf *bytes.Buffer, indexes []int) *CharProcResult {
 	ch := l.peek(pos)
 	if ch == '\\' {
 		nextPos, newIndexes := l.handleBackslash(pos, buf, k == token.TokenKindString, indexes)
@@ -52,7 +52,7 @@ func (l *defaultLexer) handleNonEscaped(pos int, k token.Kind, buf *bytes.Buffer
 }
 
 // handleEscaped processes an escaped character and updates the token state
-func (l *defaultLexer) handleEscaped(pos int, k token.Kind, buf *bytes.Buffer, indexes []int) (CharProcResult, error) {
+func (l *defaultLexer) handleEscaped(pos int, k token.Kind, buf *bytes.Buffer, indexes []int) (*CharProcResult, error) {
 	valid, err := l.handleEscapeSequence(pos, k)
 	if err != nil {
 		return NewCharProcResult(pos, true, indexes), err

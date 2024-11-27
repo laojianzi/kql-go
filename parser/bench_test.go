@@ -38,12 +38,13 @@ func BenchmarkParser(b *testing.B) {
 	for _, bq := range benchmarkQueries {
 		b.Run(bq.name, func(b *testing.B) {
 			b.ReportAllocs()
+
 			for i := 0; i < b.N; i++ {
-				p := New(bq.query)
-				stmt, err := p.Stmt()
+				stmt, err := New(bq.query).Stmt()
 				if err != nil {
 					b.Fatal(err)
 				}
+
 				_ = stmt.String()
 			}
 		})
@@ -54,13 +55,14 @@ func BenchmarkParserParallel(b *testing.B) {
 	for _, bq := range benchmarkQueries {
 		b.Run(bq.name, func(b *testing.B) {
 			b.ReportAllocs()
+
 			b.RunParallel(func(pb *testing.PB) {
 				for pb.Next() {
-					p := New(bq.query)
-					stmt, err := p.Stmt()
+					stmt, err := New(bq.query).Stmt()
 					if err != nil {
 						b.Fatal(err)
 					}
+
 					_ = stmt.String()
 				}
 			})
@@ -72,8 +74,10 @@ func BenchmarkLexer(b *testing.B) {
 	for _, bq := range benchmarkQueries {
 		b.Run(bq.name, func(b *testing.B) {
 			b.ReportAllocs()
+
 			for i := 0; i < b.N; i++ {
 				l := newLexer(bq.query)
+
 				for {
 					if l.nextToken(); l.eof() {
 						break
@@ -110,8 +114,10 @@ func BenchmarkEscapeSequence(b *testing.B) {
 	for _, tt := range tests {
 		b.Run(tt.name, func(b *testing.B) {
 			b.ReportAllocs()
+
 			for i := 0; i < b.N; i++ {
 				l := newLexer(tt.input)
+
 				for {
 					if l.nextToken(); l.eof() {
 						break

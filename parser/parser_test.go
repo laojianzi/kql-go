@@ -503,6 +503,7 @@ func TestParser_EscapedWildcard(t *testing.T) {
 
 			if tt.wantErr {
 				assert.Error(t, err)
+
 				return
 			}
 
