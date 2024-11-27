@@ -1,5 +1,5 @@
 /*
-Package kql provides a robust parser for Kibana Query Language (KQL).
+Package kql-go provides a robust parser for Kibana Query Language (KQL).
 
 KQL is a simple yet powerful query language used in Kibana for filtering and searching data.
 This package implements a complete parser that converts KQL queries into an Abstract Syntax Tree (AST).
@@ -15,19 +15,12 @@ Basic Usage:
 	}
 
 Features:
-  - Full KQL syntax support
   - Escaped character handling
-  - Wildcard support
+  - Wildcard patterns
   - Parentheses grouping
   - AND/OR/NOT operators
   - Field:value pairs
   - String literals with quotes
-
-Performance:
-  - Efficient lexical analysis
-  - Minimal memory allocations
-  - Object pooling for tokens
-  - Optimized string handling
 
 Thread Safety:
 The parser is designed to be thread-safe. Each Parse call creates a new parser instance,

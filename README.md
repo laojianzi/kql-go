@@ -6,20 +6,16 @@
 [![GoDoc](https://img.shields.io/badge/Godoc-reference-blue.svg)](https://pkg.go.dev/github.com/laojianzi/kql-go)
 [![DeepSource](https://app.deepsource.com/gh/laojianzi/kql-go.svg/?label=code+coverage&show_trend=false&token=BgPgeWYICSssJGgLh2UosQw7)](https://app.deepsource.com/gh/laojianzi/kql-go/)
 
-A high-performance Kibana Query Language (KQL) parser implemented in Go.
+A Kibana Query Language (KQL) parser implemented in Go.
 
 ## Features
 
-- Full KQL syntax support
 - Escaped character handling
 - Wildcard patterns
 - Parentheses grouping
 - AND/OR/NOT operators
 - Field:value pairs
 - String literals with quotes
-- Detailed error messages
-- Thread-safe design
-- High performance with minimal allocations
 
 ## Installation
 
@@ -58,10 +54,32 @@ func main() {
 Recent benchmark results:
 
 ```
-BenchmarkParser/simple         	  749059	      1543 ns/op	     576 B/op	      15 allocs/op
-BenchmarkParser/with_escape   	  653020	      1845 ns/op	     624 B/op	      19 allocs/op
-BenchmarkParser/complex       	  103722	     11127 ns/op	    2848 B/op	      68 allocs/op
-BenchmarkLexer/simple        	218364832	      5.514 ns/op	       0 B/op	       0 allocs/op
+goos: darwin
+goarch: amd64
+cpu: Intel(R) Core(TM) i5-10500 CPU @ 3.10GHz
+
+BenchmarkParser/simple_field-12                           459882              2500 ns/op            1280 B/op         34 allocs/op
+BenchmarkParser/numeric_comparison-12                     728577              1646 ns/op             688 B/op         19 allocs/op
+BenchmarkParser/multiple_conditions-12                    211783              5966 ns/op            2385 B/op         62 allocs/op
+BenchmarkParser/complex_query-12                           63580             18675 ns/op            7235 B/op        168 allocs/op
+BenchmarkParser/escaped_chars-12                          108622             10926 ns/op            5416 B/op        131 allocs/op
+BenchmarkParser/many_conditions-12                         35870             34985 ns/op           12454 B/op        257 allocs/op
+BenchmarkParserParallel/simple_field-12                  1582999             773.8 ns/op            1280 B/op         34 allocs/op
+BenchmarkParserParallel/numeric_comparison-12            2465758             468.9 ns/op             688 B/op         19 allocs/op
+BenchmarkParserParallel/multiple_conditions-12            743210              1661 ns/op            2386 B/op         62 allocs/op
+BenchmarkParserParallel/complex_query-12                  219790              5692 ns/op            7238 B/op        168 allocs/op
+BenchmarkParserParallel/escaped_chars-12                  331581              3735 ns/op            5416 B/op        131 allocs/op
+BenchmarkParserParallel/many_conditions-12                125736              9812 ns/op           12459 B/op        257 allocs/op
+BenchmarkLexer/simple_field-12                            572068              1947 ns/op             832 B/op         25 allocs/op
+BenchmarkLexer/numeric_comparison-12                     1000000              1082 ns/op             264 B/op         11 allocs/op
+BenchmarkLexer/multiple_conditions-12                     278456              4342 ns/op            1360 B/op         42 allocs/op
+BenchmarkLexer/complex_query-12                            77738             16504 ns/op            4768 B/op        119 allocs/op
+BenchmarkLexer/escaped_chars-12                           129708              8450 ns/op            3768 B/op         96 allocs/op
+BenchmarkLexer/many_conditions-12                          39974             29785 ns/op            8944 B/op        192 allocs/op
+BenchmarkEscapeSequence/no_escape-12                      581481              2017 ns/op             720 B/op         26 allocs/op
+BenchmarkEscapeSequence/single_escape-12                  487568              2400 ns/op             936 B/op         32 allocs/op
+BenchmarkEscapeSequence/multiple_escapes-12               432496              2645 ns/op            1152 B/op         38 allocs/op
+BenchmarkEscapeSequence/mixed_escapes-12                  129600              9215 ns/op            3672 B/op        100 allocs/op
 ```
 
 ## Contributing
