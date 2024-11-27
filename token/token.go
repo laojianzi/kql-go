@@ -2,7 +2,9 @@ package token
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
+	"unicode/utf8"
 )
 
 // Kind represents token kind.
@@ -125,6 +127,13 @@ func IsSpecialChar(s string) bool {
 	return IsOperator(s) || s == TokenKindLparen.String() || s == TokenKindRparen.String()
 }
 
+var numberRegex = regexp.MustCompile(`^[+-]?\d+(\.\d+)?$`)
+
+// IsNumber checks if the string is a number.
+func IsNumber(s string) bool {
+	return numberRegex.MatchString(s)
+}
+
 // ToKeyword converts the string to a keyword Kind type.
 func ToKeyword(s string) Kind {
 	kind, ok := keywords[strings.ToUpper(s)]
@@ -163,4 +172,22 @@ func OperatorsExpected(got string) error {
 	}
 
 	return fmt.Errorf("expected operator %s, but got %q", strings.Join(expectedList, "|"), got)
+}
+
+// RequireEscape checks if a character requires escaping in the given context
+func RequireEscape(s string, kind Kind) bool {
+	if s == "" {
+		return false
+	}
+
+	if r, _ := utf8.DecodeRuneInString(s); r == '"' || r == '\\' {
+		return true
+	}
+
+	if kind == TokenKindString {
+		return false
+	}
+
+	// only kind TokenKindIdent
+	return IsSpecialChar(s) || IsKeyword(s)
 }

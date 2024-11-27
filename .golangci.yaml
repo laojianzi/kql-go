@@ -19,6 +19,7 @@ output:
 linters:
   disable:
     - godot
+    - gci
   presets:
     - bugs
     - comment
@@ -74,6 +75,7 @@ issues:
         - lll
         - gocognit
         - maintidx
+        - dupl
       test: "cognitive complexity 55 of func `Test_parseMatchExpr` is high (> 30)"
 
     - path: parser/token.go

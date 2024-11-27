@@ -3,9 +3,10 @@ package ast_test
 import (
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/laojianzi/kql-go/ast"
 	"github.com/laojianzi/kql-go/token"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestBinaryExpr(t *testing.T) {
@@ -28,7 +29,7 @@ func TestBinaryExpr(t *testing.T) {
 			name: `"v1"`,
 			args: args{
 				pos:    0,
-				value:  ast.NewLiteral(0, 4, token.TokenKindString, "v1"),
+				value:  ast.NewLiteral(0, 4, token.TokenKindString, "v1", nil),
 				hasNot: false,
 			},
 			wantEnd:    4,
@@ -38,7 +39,7 @@ func TestBinaryExpr(t *testing.T) {
 			name: `NOT "v1"`,
 			args: args{
 				pos:    0,
-				value:  ast.NewLiteral(4, 8, token.TokenKindString, "v1"),
+				value:  ast.NewLiteral(4, 8, token.TokenKindString, "v1", nil),
 				hasNot: true,
 			},
 			wantEnd:    8,
@@ -49,7 +50,7 @@ func TestBinaryExpr(t *testing.T) {
 			args: args{
 				field:    "f1",
 				operator: token.TokenKindOperatorEql,
-				value:    ast.NewLiteral(4, 8, token.TokenKindString, "v1"),
+				value:    ast.NewLiteral(4, 8, token.TokenKindString, "v1", nil),
 				hasNot:   false,
 			},
 			wantEnd:    8,
@@ -61,7 +62,7 @@ func TestBinaryExpr(t *testing.T) {
 				pos:      0,
 				field:    "f1",
 				operator: token.TokenKindOperatorEql,
-				value:    ast.NewLiteral(8, 12, token.TokenKindString, "v1"),
+				value:    ast.NewLiteral(8, 12, token.TokenKindString, "v1", nil),
 				hasNot:   true,
 			},
 			wantEnd:    12,

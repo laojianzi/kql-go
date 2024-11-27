@@ -3,9 +3,10 @@ package ast_test
 import (
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/laojianzi/kql-go/ast"
 	"github.com/laojianzi/kql-go/token"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestParenExpr(t *testing.T) {
@@ -25,7 +26,7 @@ func TestParenExpr(t *testing.T) {
 			name: `(f1: "v1")`,
 			args: args{
 				R:    10,
-				Expr: ast.NewBinaryExpr(1, "f1", token.TokenKindOperatorEql, ast.NewLiteral(5, 9, token.TokenKindString, "v1"), false),
+				Expr: ast.NewBinaryExpr(1, "f1", token.TokenKindOperatorEql, ast.NewLiteral(5, 9, token.TokenKindString, "v1", nil), false),
 			},
 			wantEnd:    10,
 			wantString: `(f1: "v1")`,
@@ -35,9 +36,9 @@ func TestParenExpr(t *testing.T) {
 			args: args{
 				R: 14,
 				Expr: ast.NewCombineExpr(
-					ast.NewLiteral(1, 5, token.TokenKindString, "v1"),
+					ast.NewLiteral(1, 5, token.TokenKindString, "v1", nil),
 					token.TokenKindKeywordOr,
-					ast.NewLiteral(9, 13, token.TokenKindString, "v2"),
+					ast.NewLiteral(9, 13, token.TokenKindString, "v2", nil),
 				),
 			},
 			wantEnd:    14,

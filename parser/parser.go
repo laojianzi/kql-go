@@ -16,7 +16,7 @@ type defaultParser struct {
 
 // New creates a new KQL parser.
 func New(input string) kql.Parser {
-	return &defaultParser{lexer: &defaultLexer{Value: []rune(strings.TrimSpace(input))}}
+	return &defaultParser{lexer: newLexer(input)}
 }
 
 // Stmt parses a statement from the input.
@@ -120,6 +120,14 @@ func (p *defaultParser) parseBinary() (ast.Expr, error) {
 		return nil, err
 	}
 
+	// check >=, >, <=, < operator must be followed by Int|Float|Ident
+	switch op {
+	case token.TokenKindOperatorGeq, token.TokenKindOperatorGtr, token.TokenKindOperatorLeq, token.TokenKindOperatorLss:
+		if n := strings.ReplaceAll(right.String(), token.TokenKindWildcard.String(), ""); n != "" && !token.IsNumber(n) {
+			return nil, fmt.Errorf("expected number or number with wildcard, but got %q", n)
+		}
+	}
+
 	return ast.NewBinaryExpr(pos, expr.String(), op, right, hasNot), nil
 }
 
@@ -171,14 +179,14 @@ func (p *defaultParser) parseWildcard() (ast.Expr, error) {
 		end += 1
 	}
 
-	lit := ast.NewLiteral(pos, end, kind, tok.Value)
+	lit := ast.NewLiteral(pos, end, kind, tok.Value, tok.EscapeIndexes)
 	if kind != token.TokenKindIdent && kind != token.TokenKindString {
 		return lit, nil
 	}
 
 	var indexes []int
 
-	runes := []rune(tok.Value)
+	runes := []rune(lit.String())
 	for i := range runes {
 		if runes[i] == '*' && (i == 0 || runes[i-1] != '\\') { // skip escaped wildcard
 			indexes = append(indexes, i)

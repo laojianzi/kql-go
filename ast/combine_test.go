@@ -3,9 +3,10 @@ package ast_test
 import (
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/laojianzi/kql-go/ast"
 	"github.com/laojianzi/kql-go/token"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestCombineExpr(t *testing.T) {
@@ -25,9 +26,9 @@ func TestCombineExpr(t *testing.T) {
 		{
 			name: `f1: "v1" OR NOT f1: "v2"`,
 			args: args{
-				leftExpr:  ast.NewBinaryExpr(0, "f1", token.TokenKindOperatorEql, ast.NewLiteral(4, 8, token.TokenKindString, "v1"), false),
+				leftExpr:  ast.NewBinaryExpr(0, "f1", token.TokenKindOperatorEql, ast.NewLiteral(4, 8, token.TokenKindString, "v1", nil), false),
 				keyword:   token.TokenKindKeywordOr,
-				rightExpr: ast.NewBinaryExpr(12, "f1", token.TokenKindOperatorEql, ast.NewLiteral(20, 24, token.TokenKindString, "v2"), true),
+				rightExpr: ast.NewBinaryExpr(12, "f1", token.TokenKindOperatorEql, ast.NewLiteral(20, 24, token.TokenKindString, "v2", nil), true),
 			},
 			wantEnd:    24,
 			wantString: `f1: "v1" OR NOT f1: "v2"`,
@@ -43,15 +44,15 @@ func TestCombineExpr(t *testing.T) {
 						8,
 						22,
 						ast.NewCombineExpr(
-							ast.NewBinaryExpr(9, "", 0, ast.NewLiteral(9, 13, token.TokenKindString, "v1"), false),
+							ast.NewBinaryExpr(9, "", 0, ast.NewLiteral(9, 13, token.TokenKindString, "v1", nil), false),
 							token.TokenKindKeywordOr,
-							ast.NewBinaryExpr(17, "", 0, ast.NewLiteral(17, 21, token.TokenKindString, "v2"), false),
+							ast.NewBinaryExpr(17, "", 0, ast.NewLiteral(17, 21, token.TokenKindString, "v2", nil), false),
 						),
 					),
 					true,
 				),
 				keyword:   token.TokenKindKeywordAnd,
-				rightExpr: ast.NewBinaryExpr(27, "f3", token.TokenKindOperatorEql, ast.NewLiteral(31, 35, token.TokenKindString, "v3"), false),
+				rightExpr: ast.NewBinaryExpr(27, "f3", token.TokenKindOperatorEql, ast.NewLiteral(31, 35, token.TokenKindString, "v3", nil), false),
 			},
 			wantEnd:    35,
 			wantString: `NOT f1: ("v1" OR "v2") AND f3: "v3"`,
