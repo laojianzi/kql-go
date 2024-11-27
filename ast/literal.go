@@ -4,21 +4,24 @@ import "github.com/laojianzi/kql-go/token"
 
 // Literal is a literal(int, float, string or identifier) value.
 type Literal struct {
-	pos             int
-	end             int
+	pos           int
+	end           int
+	escapeIndexes []int
+
 	Kind            token.Kind // int, float, string or identifier
 	Value           string
 	WithDoubleQuote bool
 }
 
 // NewLiteral creates a new literal value.
-func NewLiteral(pos, end int, kind token.Kind, value string) *Literal {
+func NewLiteral(pos, end int, kind token.Kind, value string, escapeIndexes []int) *Literal {
 	return &Literal{
 		pos:             pos,
 		end:             end,
 		Kind:            kind,
 		Value:           value,
 		WithDoubleQuote: kind == token.TokenKindString,
+		escapeIndexes:   escapeIndexes,
 	}
 }
 
@@ -34,9 +37,21 @@ func (e *Literal) End() int {
 
 // String returns the string representation of the literal value.
 func (e *Literal) String() string {
-	if e.WithDoubleQuote {
-		return `"` + e.Value + `"`
+	value := e.Value
+	if len(e.escapeIndexes) > 0 {
+		runes, newValue, lastIndex := []rune(value), []rune{}, 0
+		for _, escapeIndex := range e.escapeIndexes {
+			newValue = append(newValue, runes[lastIndex:escapeIndex]...)
+			newValue = append(newValue, '\\')
+			lastIndex = escapeIndex
+		}
+
+		value = string(append(newValue, runes[lastIndex:]...))
 	}
 
-	return e.Value
+	if e.WithDoubleQuote {
+		return `"` + value + `"`
+	}
+
+	return value
 }

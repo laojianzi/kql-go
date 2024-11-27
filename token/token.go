@@ -2,6 +2,7 @@ package token
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 )
 
@@ -125,6 +126,12 @@ func IsSpecialChar(s string) bool {
 	return IsOperator(s) || s == TokenKindLparen.String() || s == TokenKindRparen.String()
 }
 
+// IsNumber checks if the string is a number.
+func IsNumber(s string) bool {
+	matched, _ := regexp.MatchString("^[+-]?\\d+(\\.\\d+)?$", s)
+	return matched
+}
+
 // ToKeyword converts the string to a keyword Kind type.
 func ToKeyword(s string) Kind {
 	kind, ok := keywords[strings.ToUpper(s)]
@@ -163,4 +170,22 @@ func OperatorsExpected(got string) error {
 	}
 
 	return fmt.Errorf("expected operator %s, but got %q", strings.Join(expectedList, "|"), got)
+}
+
+// RequireEscape checks if a character requires escaping in the given context
+func RequireEscape(s string, kind Kind) bool {
+	if s == "" {
+		return false
+	}
+
+	if r := []rune(s)[0]; []rune(s)[0] == '"' || r == '\\' {
+		return true
+	}
+
+	if kind == TokenKindString {
+		return false
+	}
+
+	// only kind TokenKindIdent
+	return IsSpecialChar(s) || IsKeyword(s)
 }

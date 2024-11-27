@@ -3,9 +3,10 @@ package ast_test
 import (
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/laojianzi/kql-go/ast"
 	"github.com/laojianzi/kql-go/token"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestLiteral(t *testing.T) {
@@ -73,7 +74,7 @@ func TestLiteral(t *testing.T) {
 
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			expr := ast.NewLiteral(c.args.pos, c.args.end, c.args.kind, c.args.value)
+			expr := ast.NewLiteral(c.args.pos, c.args.end, c.args.kind, c.args.value, nil)
 			assert.Equal(t, c.wantPos, expr.Pos())
 			assert.Equal(t, c.wantEnd, expr.End())
 			assert.Equal(t, c.wantString, expr.String())
