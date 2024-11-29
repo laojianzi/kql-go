@@ -740,3 +740,45 @@ func TestParser_ComplexQueries(t *testing.T) {
 		})
 	}
 }
+
+func TestParserFuzzBugs(t *testing.T) {
+	tests := []struct {
+		query   string
+		want    ast.Expr
+		wantErr error
+	}{
+		{
+			"0 :0",
+			nil,
+			errors.New("line 0:2 expected keyword OR|AND|NOT, but got \":\"\n0 :0\n  ^\n"),
+		},
+		{
+			"\\AND :0",
+			ast.NewBinaryExpr(0, "\\AND", token.TokenKindOperatorEql, ast.NewLiteral(
+				6, 7, token.TokenKindInt, "0", nil,
+			), false),
+			nil,
+		},
+		{
+			"\\AND: 0",
+			ast.NewBinaryExpr(0, "\\AND", token.TokenKindOperatorEql, ast.NewLiteral(
+				6, 7, token.TokenKindInt, "0", nil,
+			), false),
+			nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.query, func(t *testing.T) {
+			stmt, err := parser.New(tt.query).Stmt()
+
+			if tt.wantErr == nil {
+				assert.NoError(t, err)
+			} else {
+				assert.EqualError(t, err, tt.wantErr.Error())
+			}
+
+			assert.EqualValues(t, tt.want, stmt)
+		})
+	}
+}

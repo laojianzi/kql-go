@@ -107,7 +107,7 @@ func (p *defaultParser) parseBinary() (ast.Expr, error) {
 	}
 
 	op := p.lexer.Token.Kind
-	if !op.IsOperator() {
+	if !op.IsOperator() || !p.lexer.lastTokenKind.IsField() {
 		return ast.NewBinaryExpr(pos, "", 0, expr, hasNot), nil
 	}
 
