@@ -99,6 +99,9 @@ go test -v -count=1 -race ./...
 
 # Run benchmarks
 go test -bench=. -benchmem ./...
+
+# Run fuzz tests, but require go version >= 1.18
+go test -fuzz=. ./parser/...
 ```
 
 ## Examples
