@@ -102,14 +102,20 @@ func (l *defaultLexer) consumeFieldToken() error {
 
 // shouldBreak checks if token collection should stop
 func (l *defaultLexer) shouldBreak(i int, isString, withEscape bool, endChar rune) bool {
-	if isString && !withEscape && l.peek(i) == endChar {
+	ch := l.peek(i)
+	if isString && !withEscape && ch == endChar {
 		return true
 	}
 
 	if !isString && !withEscape {
-		if unicode.IsSpace(l.peek(i)) || l.peek(i) == ')' {
+		if unicode.IsSpace(ch) || ch == ')' || ch == ':' {
 			return true
 		}
+	}
+
+	// not \:
+	if !isString && withEscape && ch == ':' && (!l.peekOk(i-1) || l.peek(i-1) != '\\') {
+		return true
 	}
 
 	return false
@@ -121,8 +127,9 @@ func (l *defaultLexer) collectNextToken(start int) string {
 	buf.WriteRune(l.peek(start))
 
 	for j := start; l.peekOk(j + 1); j++ {
+		currentRune := l.peek(j)
 		nextRune := l.peek(j + 1)
-		if unicode.IsSpace(nextRune) || nextRune == ')' {
+		if currentRune != '\\' && (unicode.IsSpace(nextRune) || nextRune == ')' || nextRune == ':') {
 			break
 		}
 
