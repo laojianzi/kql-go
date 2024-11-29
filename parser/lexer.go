@@ -127,8 +127,7 @@ func (l *defaultLexer) collectNextToken(start int) string {
 	buf.WriteRune(l.peek(start))
 
 	for j := start; l.peekOk(j + 1); j++ {
-		currentRune := l.peek(j)
-		nextRune := l.peek(j + 1)
+		currentRune, nextRune := l.peek(j), l.peek(j+1)
 		if currentRune != '\\' && (unicode.IsSpace(nextRune) || nextRune == ')' || nextRune == ':') {
 			break
 		}

@@ -47,7 +47,7 @@ func FuzzParser(f *testing.F) {
 			return
 		}
 
-		// TODO: Current fuzzing implementation has limitations in input/output validation.
+		// Current fuzzing implementation has limitations in input/output validation.
 		// This test only covers basic safety checks:
 		// 1. No panics during parsing
 		// 2. String() output can be re-parsed
